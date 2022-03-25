@@ -3,6 +3,7 @@
 #include <stdlib.h>
 //#include "huffman.h"
 #include <stdbool.h>
+#include <math.h>
 
 typedef unsigned char byte; //8 bits -> table ascci
 
@@ -32,6 +33,8 @@ void list_tab(unsigned int tab_freq[],nodelist *l);
 nodelist *new_list(nodelist *l);
 nodetree *getminelement(nodelist *l);
 nodetree *BuildHuffmanTree(int unsigned *listBytes);
+void FreeTree(nodetree *n);
+void to_comprime(char *input_name,char *output_name);
 
 int main(int argc,char *argv[])
 {
@@ -41,25 +44,10 @@ int main(int argc,char *argv[])
         }
         
         char *filename = argv[1];    
-        FILE *input = fopen(filename,"r");
+        char *output_Filename; 
+        sprintf(output_Filename,"%s.hf",filename);
         
-        if (input == NULL)
-        {
-            printf("not cloud open %s\n",filename);    
-            return 2;
-        }
-        
-        getfrequencebytes(input,bytelist);        
-        
-        nodelist *list;
-        list = new_list(list);
-
-        list_tab(bytelist,list);
-
-        for (int i=0;i<CARACTERS_NUMBER;i++){
-                printf("%c:%d\n",i,bytelist[i]);
-
-        }
+        to_comprime(filename,output_Filename);
 
 }
 
@@ -70,6 +58,82 @@ void getfrequencebytes(FILE *input,int unsigned *listbytes)
         listbytes[(int) c]++;
     }
 
+}
+
+void to_comprime(char *input_name,char *output_name)
+{
+//
+        char buffer[1024] = {0};
+        byte c;
+        int size;
+        int unsigned bytelist[CARACTERS_NUMBER] = {0}; 
+        byte aux = 0;
+
+        FILE *input = fopen(input_name,"r");
+
+        if(input==NULL){
+            printf("NOt Could open %s\n",input_name);
+            return ;
+        }
+        FILE *output = fopen(output_name,"w");
+        if(output == NULL){
+            printf("Error 4\n");
+            return ;
+        }
+        getfrequencebytes(input,bytelist);
+
+        nodetree *huffmanTree = BuildHuffmanTree(bytelist);
+        
+        fwrite(bytelist,256,sizeof(bytelist[0]),output);
+        
+        while (fread(&c,1,1,input)>=1)
+        {
+                SearchAscciByte(huffmanTree,c,buffer,0);
+
+                for (char *i = buffer;*i;i++){
+                    if (*i == '1'){
+                        //right
+                        aux = aux + pow(2,size % 8);    
+                    }
+                        
+                    size++;
+                    if(size%8 == 0)
+                    {
+                        //left
+                        fwrite(&aux,1,1,output);
+                        aux = 0;
+                    }
+                }
+        }
+
+        fwrite(&aux,1,1,output);
+        fwrite(&size,1,sizeof(int),output);
+        
+
+        double sizeOutput = ftell(output);
+        double sizeInput = ftell(input);
+
+        float compressTaxa = 100 * (sizeOutput/sizeInput);
+        printf("Compress tax: %f",compressTaxa);
+        
+        FreeTree(huffmanTree);
+
+        fclose(input);
+        fclose(output);
+
+}
+
+void FreeTree(nodetree *n)
+{
+    if (!n) return;
+    else
+    {
+        nodetree *left = n->left;
+        nodetree *rigth = n->rigth;
+        free(n);
+        FreeTree(left);
+        FreeTree(rigth);
+    }
 }
 
 nodetree *createnewtree(byte c,int freq,nodetree *left,nodetree *rigth,nodetree *next)
@@ -170,8 +234,7 @@ nodetree *getminelement(nodelist *l){
         return aux2;
 }
 
-nodetree *BuildHuffmanTree(int unsigned *listBytes)
-{
+nodetree *BuildHuffmanTree(int unsigned *listBytes){
         //get min frequence
         //make tree of this element 
         //
@@ -199,7 +262,7 @@ nodetree *BuildHuffmanTree(int unsigned *listBytes)
                         );
                 InsertOrdList(l,sum_nodes);
         }
-        return getminelement(l);
+        return l->head;
 }
 
 
