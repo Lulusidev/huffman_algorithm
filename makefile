@@ -1,0 +1,1 @@
+gcc -o huffman hufman.c -lm
